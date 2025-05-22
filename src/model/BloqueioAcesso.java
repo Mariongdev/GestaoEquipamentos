@@ -1,0 +1,32 @@
+package model;
+
+import java.time.LocalDate;
+
+public class BloqueioAcesso {
+    private int id;
+    private String cliente;
+    private String contexto;
+    private String nomeAcesso;
+    private LocalDate data;
+    
+    public BloqueioAcesso() {}
+    
+    public BloqueioAcesso(String cliente, String contexto, String nomeAcesso, LocalDate data) {
+        this.cliente = cliente;
+        this.contexto = contexto;
+        this.nomeAcesso = nomeAcesso;
+        this.data = data;
+    }
+    
+    // Getters e Setters
+    public int getId() { return id; }
+    public void setId(int id) { this.id = id; }
+    public String getCliente() { return cliente; }
+    public void setCliente(String cliente) { this.cliente = cliente; }
+    public String getContexto() { return contexto; }
+    public void setContexto(String contexto) { this.contexto = contexto; }
+    public String getNomeAcesso() { return nomeAcesso; }
+    public void setNomeAcesso(String nomeAcesso) { this.nomeAcesso = nomeAcesso; }
+    public LocalDate getData() { return data; }
+    public void setData(LocalDate data) { this.data = data; }
+}
