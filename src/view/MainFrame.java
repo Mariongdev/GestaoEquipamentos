@@ -8,7 +8,7 @@ public class MainFrame extends JFrame {
 
     private JTabbedPane tabbedPane;
 
-    public MainFrame() {
+    public MainFrame() throws ClassNotFoundException {
         super("Gestão de Clientes e Equipamentos");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setSize(1000, 700);
@@ -17,19 +17,20 @@ public class MainFrame extends JFrame {
         initComponents();
     }
 
-    private void initComponents() {
+    private void initComponents() throws ClassNotFoundException {
         tabbedPane = new JTabbedPane();
 
         // Adiciona as abas
         tabbedPane.addTab("Clientes", new ClientePanel());
         tabbedPane.addTab("Equipamentos Alugados", new EquipamentoAlugadoPanel());
-        tabbedPane.addTab("Relatórios", new RelatoriosPanel());
         tabbedPane.addTab("Bloqueio de Acesso", new BloqueioAcessoPanel());
+        tabbedPane.addTab("Relatórios", new RelatoriosPanel());
         tabbedPane.addTab("Backup", new BackupPanel());
-        
 
         add(tabbedPane);
     }
+
+
 
    /* public static void main(String[] args) {
         try {

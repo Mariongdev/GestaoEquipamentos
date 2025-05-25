@@ -2,10 +2,11 @@ package view;
 
 import dao.EquipamentoAlugadoDAO;
 import model.EquipamentoAlugado;
+
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
-import java.awt.event.ActionEvent;
+import java.awt.event.*;
 import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -21,151 +22,164 @@ public class EquipamentoAlugadoPanel extends JPanel {
     private JLabel lblTotalEquipamentos;
     private int equipamentoSelecionadoId = -1;
     private final DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-    
+    private int totalEquipamentos = 0; // total geral sem filtro
+
     public EquipamentoAlugadoPanel() {
         initComponents();
-        carregarDados();
+        try {
+            carregarDados();
+        } catch (ClassNotFoundException ex) {
+            JOptionPane.showMessageDialog(this,
+                    "Erro ao carregar driver do banco de dados: " + ex.getMessage(),
+                    "Erro", JOptionPane.ERROR_MESSAGE);
+        }
     }
-    
+
     private void initComponents() {
-        setLayout(new BorderLayout(5, 5));
-        
-        // Painel de formulário
-        JPanel formPanel = new JPanel(new GridLayout(0, 2, 5, 5));
-        formPanel.setBorder(BorderFactory.createTitledBorder("Dados do Equipamento Alugado"));
-        
-        formPanel.add(new JLabel("Nome:"));
-        txtNome = new JTextField();
-        formPanel.add(txtNome);
-        
-        formPanel.add(new JLabel("Modelo Equipamento:"));
-        txtEquipModelo = new JTextField();
-        formPanel.add(txtEquipModelo);
-        
-        formPanel.add(new JLabel("Quantidade Equipamento:"));
-        txtEquipQuantidade = new JTextField();
-        formPanel.add(txtEquipQuantidade);
-        
-        formPanel.add(new JLabel("Data (dd/mm/aaaa):"));
-        txtData = new JTextField();
-        formPanel.add(txtData);
-        
-        formPanel.add(new JLabel("Status:"));
+        setLayout(new BorderLayout());
+
+        // Painel superior principal com layout vertical
+        JPanel topPanel = new JPanel();
+        topPanel.setLayout(new BoxLayout(topPanel, BoxLayout.Y_AXIS));
+
+        // Painel do formulário (labels e campos)
+        JPanel formPanel = new JPanel(new GridBagLayout());
+        GridBagConstraints gbc = new GridBagConstraints();
+
+        JLabel lblNome = new JLabel("Nome:");
+        JLabel lblEquipModelo = new JLabel("Modelo:");
+        JLabel lblEquipQuantidade = new JLabel("Quantidade:");
+        JLabel lblData = new JLabel("Data (dd/MM/yyyy):");
+        JLabel lblStatus = new JLabel("Status:");
+
+        txtNome = new JTextField(15);
+        txtEquipModelo = new JTextField(15);
+        txtEquipQuantidade = new JTextField(5);
+        txtData = new JTextField(10);
         cmbStatus = new JComboBox<>(new String[]{"Ativo", "Inativo"});
-        formPanel.add(cmbStatus);
-        
-        // Painel de botões
-        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 5, 5));
-        
+
+        gbc.insets = new Insets(5,5,5,5);
+        gbc.anchor = GridBagConstraints.WEST;
+
+        // Linha 0
+        gbc.gridx = 0; gbc.gridy = 0; formPanel.add(lblNome, gbc);
+        gbc.gridx = 1; gbc.gridy = 0; formPanel.add(txtNome, gbc);
+
+        gbc.gridx = 2; gbc.gridy = 0; formPanel.add(lblEquipModelo, gbc);
+        gbc.gridx = 3; gbc.gridy = 0; formPanel.add(txtEquipModelo, gbc);
+
+        // Linha 1
+        gbc.gridx = 0; gbc.gridy = 1; formPanel.add(lblEquipQuantidade, gbc);
+        gbc.gridx = 1; gbc.gridy = 1; formPanel.add(txtEquipQuantidade, gbc);
+
+        gbc.gridx = 2; gbc.gridy = 1; formPanel.add(lblData, gbc);
+        gbc.gridx = 3; gbc.gridy = 1; formPanel.add(txtData, gbc);
+
+        // Linha 2
+        gbc.gridx = 0; gbc.gridy = 2; formPanel.add(lblStatus, gbc);
+        gbc.gridx = 1; gbc.gridy = 2; formPanel.add(cmbStatus, gbc);
+
+        topPanel.add(formPanel);
+
+        // Painel dos botões CRUD
+        JPanel buttonsPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 5));
         btnAdicionar = new JButton("Adicionar");
         btnEditar = new JButton("Editar");
         btnExcluir = new JButton("Excluir");
         btnLimpar = new JButton("Limpar");
-        
-        buttonPanel.add(btnAdicionar);
-        buttonPanel.add(btnEditar);
-        buttonPanel.add(btnExcluir);
-        buttonPanel.add(btnLimpar);
-        
-        // Painel de filtro
-        JPanel filterPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 5));
-        filterPanel.setBorder(BorderFactory.createTitledBorder("Filtrar"));
-        
-        filterPanel.add(new JLabel("Filtro:"));
-        txtFiltro = new JTextField(20);
-        filterPanel.add(txtFiltro);
-        
-        filterPanel.add(new JLabel("Status:"));
+
+        buttonsPanel.add(btnAdicionar);
+        buttonsPanel.add(btnEditar);
+        buttonsPanel.add(btnExcluir);
+        buttonsPanel.add(btnLimpar);
+
+        topPanel.add(buttonsPanel);
+
+        // Painel de filtro + botão filtrar + total equipamentos
+        JPanel filtroPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 5));
+        filtroPanel.add(new JLabel("Filtro:"));
+        txtFiltro = new JTextField(15);
+        filtroPanel.add(txtFiltro);
+
+        filtroPanel.add(new JLabel("Status:"));
         cmbFiltroStatus = new JComboBox<>(new String[]{"", "Ativo", "Inativo"});
-        filterPanel.add(cmbFiltroStatus);
-        
+        filtroPanel.add(cmbFiltroStatus);
+
         btnFiltrar = new JButton("Filtrar");
-        filterPanel.add(btnFiltrar);
-        
-        // Tabela de dados
-        tableModel = new DefaultTableModel(new Object[]{"ID", "Nome", "Equip. Modelo", 
-            "Equip. Quant.", "Data", "Status"}, 0) {
+        filtroPanel.add(btnFiltrar);
+
+        lblTotalEquipamentos = new JLabel("Mostrando 0 de 0 equipamentos");
+        filtroPanel.add(Box.createHorizontalStrut(20)); // espaçamento
+        filtroPanel.add(lblTotalEquipamentos);
+
+        topPanel.add(filtroPanel);
+
+        add(topPanel, BorderLayout.NORTH);
+
+        // Tabela
+        tableModel = new DefaultTableModel(
+                new Object[]{"ID", "Nome", "Modelo", "Quantidade", "Data", "Status"}, 0
+        ) {
             @Override
             public boolean isCellEditable(int row, int column) {
                 return false;
             }
         };
-        
         table = new JTable(tableModel);
-        table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        table.getSelectionModel().addListSelectionListener(e -> {
-            if (!e.getValueIsAdjusting() && table.getSelectedRow() != -1) {
-                selecionarEquipamento();
-            }
-        });
-        
         JScrollPane scrollPane = new JScrollPane(table);
-        
-        // Painel do rodapé com total
-        JPanel footerPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        lblTotalEquipamentos = new JLabel("Total: 0");
-        lblTotalEquipamentos.setFont(new Font("Arial", Font.BOLD, 12));
-        footerPanel.add(lblTotalEquipamentos);
-        
-        // Painel central que agrupa tabela e rodapé
-        JPanel centerPanel = new JPanel(new BorderLayout());
-        centerPanel.add(filterPanel, BorderLayout.NORTH);
-        centerPanel.add(scrollPane, BorderLayout.CENTER);
-        centerPanel.add(footerPanel, BorderLayout.SOUTH);
-        
-        // Painel superior que agrupa formulário e botões
-        JPanel northPanel = new JPanel(new BorderLayout());
-        northPanel.add(formPanel, BorderLayout.CENTER);
-        northPanel.add(buttonPanel, BorderLayout.SOUTH);
-        
-        // Adiciona componentes ao painel principal
-        add(northPanel, BorderLayout.NORTH);
-        add(centerPanel, BorderLayout.CENTER);
-        
-        // Configura ações dos botões
+        add(scrollPane, BorderLayout.CENTER);
+
+        // Listeners
         btnAdicionar.addActionListener(this::adicionarEquipamento);
         btnEditar.addActionListener(this::editarEquipamento);
         btnExcluir.addActionListener(this::excluirEquipamento);
         btnLimpar.addActionListener(e -> limparFormulario());
         btnFiltrar.addActionListener(this::filtrarEquipamentos);
+
+        table.getSelectionModel().addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting()) {
+                selecionarEquipamento();
+            }
+        });
     }
-    
-    private void carregarDados() {
+
+    private void carregarDados() throws ClassNotFoundException {
         try {
             List<EquipamentoAlugado> equipamentos = new EquipamentoAlugadoDAO().listarTodos();
+            totalEquipamentos = equipamentos.size();
             atualizarTabela(equipamentos);
-            atualizarTotalEquipamentos(equipamentos.size());
+            atualizarTotalEquipamentos(equipamentos.size(), totalEquipamentos);
         } catch (SQLException ex) {
-            JOptionPane.showMessageDialog(this, 
-                "Erro ao carregar equipamentos: " + ex.getMessage(), 
-                "Erro", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this,
+                    "Erro ao carregar equipamentos: " + ex.getMessage(),
+                    "Erro", JOptionPane.ERROR_MESSAGE);
         }
     }
-    
-    private void atualizarTotalEquipamentos(int total) {
-        lblTotalEquipamentos.setText("Total: " + total);
+
+    private void atualizarTotalEquipamentos(int mostrados, int total) {
+        lblTotalEquipamentos.setText("Mostrando " + mostrados + " de " + total + " equipamentos");
     }
-    
+
     private void atualizarTabela(List<EquipamentoAlugado> equipamentos) {
         tableModel.setRowCount(0);
-        
+
         for (EquipamentoAlugado equipamento : equipamentos) {
             tableModel.addRow(new Object[]{
-                equipamento.getId(),
-                equipamento.getNome(),
-                equipamento.getEquipamentoModelo(),
-                equipamento.getEquipamentoQuantidade(),
-                equipamento.getData().format(dateFormatter),
-                equipamento.getStatus()
+                    equipamento.getId(),
+                    equipamento.getNome(),
+                    equipamento.getEquipamentoModelo(),
+                    equipamento.getEquipamentoQuantidade(),
+                    equipamento.getData().format(dateFormatter),
+                    equipamento.getStatus()
             });
         }
     }
-    
+
     private void selecionarEquipamento() {
         int selectedRow = table.getSelectedRow();
         if (selectedRow >= 0) {
             equipamentoSelecionadoId = (int) tableModel.getValueAt(selectedRow, 0);
-            
+
             try {
                 EquipamentoAlugado equipamento = new EquipamentoAlugadoDAO().buscarPorId(equipamentoSelecionadoId);
                 if (equipamento != null) {
@@ -175,154 +189,156 @@ public class EquipamentoAlugadoPanel extends JPanel {
                     txtData.setText(equipamento.getData().format(dateFormatter));
                     cmbStatus.setSelectedItem(equipamento.getStatus());
                 }
-            } catch (SQLException ex) {
-                JOptionPane.showMessageDialog(this, 
-                    "Erro ao carregar equipamento: " + ex.getMessage(), 
-                    "Erro", JOptionPane.ERROR_MESSAGE);
+            } catch (ClassNotFoundException | SQLException ex) {
+                JOptionPane.showMessageDialog(this,
+                        "Erro ao carregar equipamento: " + ex.getMessage(),
+                        "Erro", JOptionPane.ERROR_MESSAGE);
             }
         }
     }
-    
+
     private void adicionarEquipamento(ActionEvent e) {
         try {
             if (txtNome.getText().trim().isEmpty()) {
-                JOptionPane.showMessageDialog(this, 
-                    "Nome é obrigatório", "Aviso", JOptionPane.WARNING_MESSAGE);
+                JOptionPane.showMessageDialog(this,
+                        "Nome é obrigatório", "Aviso", JOptionPane.WARNING_MESSAGE);
                 return;
             }
-            
-            if (txtEquipQuantidade.getText().trim().isEmpty() || 
-                !txtEquipQuantidade.getText().matches("\\d+")) {
-                JOptionPane.showMessageDialog(this, 
-                    "Quantidade de equipamentos inválida", "Aviso", JOptionPane.WARNING_MESSAGE);
+
+            if (txtEquipQuantidade.getText().trim().isEmpty() ||
+                    !txtEquipQuantidade.getText().matches("\\d+")) {
+                JOptionPane.showMessageDialog(this,
+                        "Quantidade de equipamentos inválida", "Aviso", JOptionPane.WARNING_MESSAGE);
                 return;
             }
-            
+
             LocalDate data;
             try {
                 data = LocalDate.parse(txtData.getText(), dateFormatter);
             } catch (DateTimeParseException ex) {
-                JOptionPane.showMessageDialog(this, 
-                    "Data inválida. Use o formato dd/mm/aaaa", "Aviso", JOptionPane.WARNING_MESSAGE);
+                JOptionPane.showMessageDialog(this,
+                        "Data inválida. Use o formato dd/MM/yyyy", "Aviso", JOptionPane.WARNING_MESSAGE);
                 return;
             }
-            
+
             EquipamentoAlugado equipamento = new EquipamentoAlugado(
-                txtNome.getText(),
-                txtEquipModelo.getText(),
-                Integer.parseInt(txtEquipQuantidade.getText()),
-                data,
-                cmbStatus.getSelectedItem().toString()
+                    txtNome.getText(),
+                    txtEquipModelo.getText(),
+                    Integer.parseInt(txtEquipQuantidade.getText()),
+                    data,
+                    cmbStatus.getSelectedItem().toString()
             );
-            
+
             new EquipamentoAlugadoDAO().inserir(equipamento);
             carregarDados();
             limparFormulario();
-            
-            JOptionPane.showMessageDialog(this, 
-                "Equipamento adicionado com sucesso!", "Sucesso", JOptionPane.INFORMATION_MESSAGE);
-            
-        } catch (SQLException ex) {
-            JOptionPane.showMessageDialog(this, 
-                "Erro ao adicionar equipamento: " + ex.getMessage(), 
-                "Erro", JOptionPane.ERROR_MESSAGE);
+
+            JOptionPane.showMessageDialog(this,
+                    "Equipamento adicionado com sucesso!", "Sucesso", JOptionPane.INFORMATION_MESSAGE);
+
+        } catch (ClassNotFoundException | SQLException ex) {
+            JOptionPane.showMessageDialog(this,
+                    "Erro ao adicionar equipamento: " + ex.getMessage(),
+                    "Erro", JOptionPane.ERROR_MESSAGE);
+        } catch (NumberFormatException ex) {
+            JOptionPane.showMessageDialog(this,
+                    "Quantidade deve ser um número válido", "Erro", JOptionPane.ERROR_MESSAGE);
         }
     }
-    
+
     private void editarEquipamento(ActionEvent e) {
         if (equipamentoSelecionadoId == -1) {
-            JOptionPane.showMessageDialog(this, 
-                "Selecione um equipamento para editar", "Aviso", JOptionPane.WARNING_MESSAGE);
+            JOptionPane.showMessageDialog(this,
+                    "Selecione um equipamento para editar", "Aviso", JOptionPane.WARNING_MESSAGE);
             return;
         }
-        
+
         try {
             if (txtNome.getText().trim().isEmpty()) {
-                JOptionPane.showMessageDialog(this, 
-                    "Nome é obrigatório", "Aviso", JOptionPane.WARNING_MESSAGE);
+                JOptionPane.showMessageDialog(this,
+                        "Nome é obrigatório", "Aviso", JOptionPane.WARNING_MESSAGE);
                 return;
             }
-            
+
             LocalDate data;
             try {
                 data = LocalDate.parse(txtData.getText(), dateFormatter);
             } catch (DateTimeParseException ex) {
-                JOptionPane.showMessageDialog(this, 
-                    "Data inválida. Use o formato dd/mm/aaaa", "Aviso", JOptionPane.WARNING_MESSAGE);
+                JOptionPane.showMessageDialog(this,
+                        "Data inválida. Use o formato dd/MM/yyyy", "Aviso", JOptionPane.WARNING_MESSAGE);
                 return;
             }
-            
+
             EquipamentoAlugado equipamento = new EquipamentoAlugado(
-                txtNome.getText(),
-                txtEquipModelo.getText(),
-                Integer.parseInt(txtEquipQuantidade.getText()),
-                data,
-                cmbStatus.getSelectedItem().toString()
+                    txtNome.getText(),
+                    txtEquipModelo.getText(),
+                    Integer.parseInt(txtEquipQuantidade.getText()),
+                    data,
+                    cmbStatus.getSelectedItem().toString()
             );
             equipamento.setId(equipamentoSelecionadoId);
-            
+
             new EquipamentoAlugadoDAO().atualizar(equipamento);
             carregarDados();
             limparFormulario();
-            
-            JOptionPane.showMessageDialog(this, 
-                "Equipamento atualizado com sucesso!", "Sucesso", JOptionPane.INFORMATION_MESSAGE);
-            
-        } catch (SQLException ex) {
-            JOptionPane.showMessageDialog(this, 
-                "Erro ao atualizar equipamento: " + ex.getMessage(), 
-                "Erro", JOptionPane.ERROR_MESSAGE);
+
+            JOptionPane.showMessageDialog(this,
+                    "Equipamento atualizado com sucesso!", "Sucesso", JOptionPane.INFORMATION_MESSAGE);
+
+        } catch (ClassNotFoundException | SQLException ex) {
+            JOptionPane.showMessageDialog(this,
+                    "Erro ao atualizar equipamento: " + ex.getMessage(),
+                    "Erro", JOptionPane.ERROR_MESSAGE);
+        } catch (NumberFormatException ex) {
+            JOptionPane.showMessageDialog(this,
+                    "Quantidade deve ser um número válido", "Erro", JOptionPane.ERROR_MESSAGE);
         }
     }
-    
+
     private void excluirEquipamento(ActionEvent e) {
         if (equipamentoSelecionadoId == -1) {
-            JOptionPane.showMessageDialog(this, 
-                "Selecione um equipamento para excluir", "Aviso", JOptionPane.WARNING_MESSAGE);
+            JOptionPane.showMessageDialog(this,
+                    "Selecione um equipamento para excluir", "Aviso", JOptionPane.WARNING_MESSAGE);
             return;
         }
-        
-        int confirm = JOptionPane.showConfirmDialog(this, 
-            "Tem certeza que deseja excluir este equipamento?", "Confirmação", 
-            JOptionPane.YES_NO_OPTION);
-        
+
+        int confirm = JOptionPane.showConfirmDialog(this,
+                "Tem certeza que deseja excluir este equipamento?", "Confirmação",
+                JOptionPane.YES_NO_OPTION);
+
         if (confirm == JOptionPane.YES_OPTION) {
             try {
                 new EquipamentoAlugadoDAO().excluir(equipamentoSelecionadoId);
                 carregarDados();
                 limparFormulario();
-                
-                JOptionPane.showMessageDialog(this, 
-                    "Equipamento excluído com sucesso!", "Sucesso", JOptionPane.INFORMATION_MESSAGE);
-                
-            } catch (SQLException ex) {
-                JOptionPane.showMessageDialog(this, 
-                    "Erro ao excluir equipamento: " + ex.getMessage(), 
-                    "Erro", JOptionPane.ERROR_MESSAGE);
+
+                JOptionPane.showMessageDialog(this,
+                        "Equipamento excluído com sucesso!", "Sucesso", JOptionPane.INFORMATION_MESSAGE);
+            } catch (ClassNotFoundException | SQLException ex) {
+                JOptionPane.showMessageDialog(this,
+                        "Erro ao excluir equipamento: " + ex.getMessage(),
+                        "Erro", JOptionPane.ERROR_MESSAGE);
             }
         }
     }
-    
+
     private void filtrarEquipamentos(ActionEvent e) {
         try {
-            String filtro = txtFiltro.getText().trim();
-            String status = cmbFiltroStatus.getSelectedItem().toString();
-            
-            if (status.isEmpty()) {
-                status = null;
-            }
-            
-            List<EquipamentoAlugado> equipamentos = new EquipamentoAlugadoDAO().filtrar(filtro, status);
-            atualizarTabela(equipamentos);
-            atualizarTotalEquipamentos(equipamentos.size());
-            
-        } catch (SQLException ex) {
-            JOptionPane.showMessageDialog(this, 
-                "Erro ao filtrar equipamentos: " + ex.getMessage(), 
-                "Erro", JOptionPane.ERROR_MESSAGE);
+            String filtroNome = txtFiltro.getText().trim();
+            String filtroStatus = (String) cmbFiltroStatus.getSelectedItem();
+
+            List<EquipamentoAlugado> equipamentosFiltrados =
+                    new EquipamentoAlugadoDAO().filtrar(filtroNome, filtroStatus);
+            atualizarTabela(equipamentosFiltrados);
+            atualizarTotalEquipamentos(equipamentosFiltrados.size(), totalEquipamentos);
+
+        } catch (ClassNotFoundException | SQLException ex) {
+            JOptionPane.showMessageDialog(this,
+                    "Erro ao filtrar equipamentos: " + ex.getMessage(),
+                    "Erro", JOptionPane.ERROR_MESSAGE);
         }
     }
-    
+
     private void limparFormulario() {
         txtNome.setText("");
         txtEquipModelo.setText("");

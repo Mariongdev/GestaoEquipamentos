@@ -7,12 +7,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class ClienteDAO {
-    public void inserir(Cliente cliente) throws SQLException {
+    public void inserir(Cliente cliente) throws SQLException, ClassNotFoundException {
         String sql = "INSERT INTO clientes (nome, contexto, bh, funcionarios, "
                 + "equipamento_modelo, equipamento_quantidade, status) "
                 + "VALUES (?, ?, ?, ?, ?, ?, ?)";
         
-        try (Connection conn = Database.getConnection();
+        Class.forName("org.sqlite.JDBC");
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:database.db");
              PreparedStatement stmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             
             stmt.setString(1, cliente.getNome());
@@ -33,12 +34,13 @@ public class ClienteDAO {
         }
     }
     
-    public void atualizar(Cliente cliente) throws SQLException {
+    public void atualizar(Cliente cliente) throws SQLException, ClassNotFoundException {
         String sql = "UPDATE clientes SET nome = ?, contexto = ?, bh = ?, "
                 + "funcionarios = ?, equipamento_modelo = ?, "
                 + "equipamento_quantidade = ?, status = ? WHERE id = ?";
         
-        try (Connection conn = Database.getConnection();
+        Class.forName("org.sqlite.JDBC");
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:database.db");
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             
             stmt.setString(1, cliente.getNome());
@@ -54,10 +56,11 @@ public class ClienteDAO {
         }
     }
     
-    public void excluir(int id) throws SQLException {
+    public void excluir(int id) throws SQLException, ClassNotFoundException {
         String sql = "DELETE FROM clientes WHERE id = ?";
         
-        try (Connection conn = Database.getConnection();
+        Class.forName("org.sqlite.JDBC");
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:database.db");
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             
             stmt.setInt(1, id);
@@ -65,11 +68,12 @@ public class ClienteDAO {
         }
     }
     
-    public Cliente buscarPorId(int id) throws SQLException {
+    public Cliente buscarPorId(int id) throws SQLException, ClassNotFoundException {
         String sql = "SELECT * FROM clientes WHERE id = ?";
         Cliente cliente = null;
         
-        try (Connection conn = Database.getConnection();
+        Class.forName("org.sqlite.JDBC");
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:database.db");
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             
             stmt.setInt(1, id);
@@ -92,11 +96,12 @@ public class ClienteDAO {
         return cliente;
     }
     
-    public List<Cliente> listarTodos() throws SQLException {
+    public List<Cliente> listarTodos() throws SQLException, ClassNotFoundException {
         List<Cliente> clientes = new ArrayList<>();
         String sql = "SELECT * FROM clientes";
         
-        try (Connection conn = Database.getConnection();
+        Class.forName("org.sqlite.JDBC");
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:database.db");
              Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
             
@@ -118,7 +123,7 @@ public class ClienteDAO {
         return clientes;
     }
     
-    public List<Cliente> filtrar(String filtro, String status) throws SQLException {
+    public List<Cliente> filtrar(String filtro, String status) throws SQLException, ClassNotFoundException {
         List<Cliente> clientes = new ArrayList<>();
         StringBuilder sql = new StringBuilder("SELECT * FROM clientes WHERE 1=1");
         
@@ -131,7 +136,8 @@ public class ClienteDAO {
             sql.append(" AND status = ?");
         }
         
-        try (Connection conn = Database.getConnection();
+        Class.forName("org.sqlite.JDBC");
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:database.db");
              PreparedStatement stmt = conn.prepareStatement(sql.toString())) {
             
             int paramIndex = 1;

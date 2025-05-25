@@ -8,11 +8,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class EquipamentoAlugadoDAO {
-    public void inserir(EquipamentoAlugado equipamento) throws SQLException {
+    public void inserir(EquipamentoAlugado equipamento) throws SQLException, ClassNotFoundException {
         String sql = "INSERT INTO equipamentos_alugados (nome, equipamento_modelo, "
                 + "equipamento_quantidade, data, status) VALUES (?, ?, ?, ?, ?)";
         
-        try (Connection conn = Database.getConnection();
+        Class.forName("org.sqlite.JDBC");
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:database.db");
              PreparedStatement stmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             
             stmt.setString(1, equipamento.getNome());
@@ -31,11 +32,12 @@ public class EquipamentoAlugadoDAO {
         }
     }
     
-    public void atualizar(EquipamentoAlugado equipamento) throws SQLException {
+    public void atualizar(EquipamentoAlugado equipamento) throws SQLException, ClassNotFoundException {
         String sql = "UPDATE equipamentos_alugados SET nome = ?, equipamento_modelo = ?, "
                 + "equipamento_quantidade = ?, data = ?, status = ? WHERE id = ?";
         
-        try (Connection conn = Database.getConnection();
+        Class.forName("org.sqlite.JDBC");
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:database.db");
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             
             stmt.setString(1, equipamento.getNome());
@@ -49,10 +51,11 @@ public class EquipamentoAlugadoDAO {
         }
     }
     
-    public void excluir(int id) throws SQLException {
+    public void excluir(int id) throws SQLException, ClassNotFoundException {
         String sql = "DELETE FROM equipamentos_alugados WHERE id = ?";
         
-        try (Connection conn = Database.getConnection();
+        Class.forName("org.sqlite.JDBC");
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:database.db");
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             
             stmt.setInt(1, id);
@@ -60,11 +63,12 @@ public class EquipamentoAlugadoDAO {
         }
     }
     
-    public EquipamentoAlugado buscarPorId(int id) throws SQLException {
+    public EquipamentoAlugado buscarPorId(int id) throws SQLException, ClassNotFoundException {
         String sql = "SELECT * FROM equipamentos_alugados WHERE id = ?";
         EquipamentoAlugado equipamento = null;
         
-        try (Connection conn = Database.getConnection();
+        Class.forName("org.sqlite.JDBC");
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:database.db");
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             
             stmt.setInt(1, id);
@@ -85,11 +89,12 @@ public class EquipamentoAlugadoDAO {
         return equipamento;
     }
     
-    public List<EquipamentoAlugado> listarTodos() throws SQLException {
+    public List<EquipamentoAlugado> listarTodos() throws SQLException, ClassNotFoundException {
         List<EquipamentoAlugado> equipamentos = new ArrayList<>();
         String sql = "SELECT * FROM equipamentos_alugados";
         
-        try (Connection conn = Database.getConnection();
+        Class.forName("org.sqlite.JDBC");
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:database.db");
              Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
             
@@ -109,7 +114,7 @@ public class EquipamentoAlugadoDAO {
         return equipamentos;
     }
     
-    public List<EquipamentoAlugado> filtrar(String filtro, String status) throws SQLException {
+    public List<EquipamentoAlugado> filtrar(String filtro, String status) throws SQLException, ClassNotFoundException {
         List<EquipamentoAlugado> equipamentos = new ArrayList<>();
         StringBuilder sql = new StringBuilder("SELECT * FROM equipamentos_alugados WHERE 1=1");
         
@@ -121,7 +126,8 @@ public class EquipamentoAlugadoDAO {
             sql.append(" AND status = ?");
         }
         
-        try (Connection conn = Database.getConnection();
+        Class.forName("org.sqlite.JDBC");
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:database.db");
              PreparedStatement stmt = conn.prepareStatement(sql.toString())) {
             
             int paramIndex = 1;
