@@ -4,8 +4,11 @@ import dao.ClienteDAO;
 import model.Cliente;
 
 import javax.swing.*;
+import javax.swing.border.EmptyBorder;
 import javax.swing.event.ListSelectionEvent;
+import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.table.JTableHeader;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.sql.SQLException;
@@ -24,6 +27,20 @@ public class ClientePanel extends JPanel {
     public ClientePanel() {
         initComponents();
         carregarDados();
+
+        setBorder(new EmptyBorder(15, 15, 15, 15));
+
+        // Aplica fonte padrão 15pt ao painel inteiro
+        setFonte(this, new Font("SansSerif", Font.PLAIN, 14));
+    }
+
+    private void setFonte(Component comp, Font fonte) {
+        comp.setFont(fonte);
+        if (comp instanceof Container) {
+            for (Component child : ((Container) comp).getComponents()) {
+                setFonte(child, fonte);
+            }
+        }
     }
 
     private void initComponents() {
@@ -88,6 +105,21 @@ public class ClientePanel extends JPanel {
         table = new JTable(tableModel);
         table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         table.getSelectionModel().addListSelectionListener(this::selecionarCliente);
+
+        // Estilo da tabela
+        Font tabelaFonte = new Font("SansSerif", Font.PLAIN, 15);
+        table.setFont(tabelaFonte); // Fonte 15pt para células
+        table.setRowHeight(28); // Altura da linha
+        table.setDefaultRenderer(Object.class, new ZebraRenderer()); // Linhas zebradas
+        table.getColumnModel().getColumn(7).setCellRenderer(new StatusCellRenderer()); // Renderer status
+
+        // Fonte e estilo negrito para o header da tabela e centraliza o texto
+        Font headerFont = new Font("SansSerif", Font.BOLD, 15);
+        JTableHeader header = table.getTableHeader();
+        header.setFont(headerFont);
+        DefaultTableCellRenderer headerRenderer = (DefaultTableCellRenderer) header.getDefaultRenderer();
+        headerRenderer.setHorizontalAlignment(SwingConstants.CENTER);
+
         JScrollPane tableScroll = new JScrollPane(table);
 
         // Painel filtro
@@ -103,11 +135,10 @@ public class ClientePanel extends JPanel {
         filtroPanel.add(new JLabel("Status:"));
         filtroPanel.add(cmbFiltroStatus);
         filtroPanel.add(btnFiltrar);
-        filtroPanel.add(Box.createHorizontalStrut(20)); // Espaço entre filtro e total
+        filtroPanel.add(Box.createHorizontalStrut(20));
         filtroPanel.add(lblTotalClientes);
 
         // Organização dos painéis na tela
-        // Um painel principal vertical para o formulário + botões + filtro
         JPanel painelTopo = new JPanel(new BorderLayout(5, 5));
         painelTopo.add(formPanel, BorderLayout.NORTH);
         painelTopo.add(buttonPanel, BorderLayout.CENTER);
@@ -261,33 +292,28 @@ public class ClientePanel extends JPanel {
 
     private Cliente obterClienteFormulario() {
         String nome = txtNome.getText().trim();
-        String contexto = txtContexto.getText().trim();
-        String bh = (String) cmbBH.getSelectedItem();
-        String status = (String) cmbStatus.getSelectedItem();
-
-        int funcionarios;
-        int equipQuantidade;
-
         if (nome.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "O campo Nome é obrigatório.");
+            JOptionPane.showMessageDialog(this, "Nome é obrigatório.");
             return null;
         }
-
+        String contexto = txtContexto.getText().trim();
+        String bh = (String) cmbBH.getSelectedItem();
+        int funcionarios;
         try {
             funcionarios = Integer.parseInt(txtFuncionarios.getText().trim());
         } catch (NumberFormatException e) {
-            JOptionPane.showMessageDialog(this, "Informe um número válido para Funcionários.");
+            JOptionPane.showMessageDialog(this, "Funcionários deve ser um número.");
             return null;
         }
-
+        String equipModelo = txtEquipModelo.getText().trim();
+        int equipQuantidade;
         try {
             equipQuantidade = Integer.parseInt(txtEquipQuantidade.getText().trim());
         } catch (NumberFormatException e) {
-            JOptionPane.showMessageDialog(this, "Informe um número válido para Quantidade do Equipamento.");
+            JOptionPane.showMessageDialog(this, "Quantidade de equipamento deve ser um número.");
             return null;
         }
-
-        String equipModelo = txtEquipModelo.getText().trim();
+        String status = (String) cmbStatus.getSelectedItem();
 
         Cliente cliente = new Cliente();
         cliente.setNome(nome);
@@ -299,5 +325,48 @@ public class ClientePanel extends JPanel {
         cliente.setStatus(status);
 
         return cliente;
+    }
+
+    // Renderer para efeito zebrado na tabela
+    private static class ZebraRenderer extends DefaultTableCellRenderer {
+        @Override
+        public Component getTableCellRendererComponent(
+                JTable table, Object value, boolean isSelected,
+                boolean hasFocus, int row, int column) {
+
+            super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+            if (!isSelected) {
+                setBackground(row % 2 == 0 ? Color.WHITE : new Color(240, 240, 240));
+            }
+            setHorizontalAlignment(CENTER);
+            return this;
+        }
+    }
+
+    // Renderer para colorir a coluna Status
+    private static class StatusCellRenderer extends DefaultTableCellRenderer {
+        @Override
+        public Component getTableCellRendererComponent(
+                JTable table, Object value, boolean isSelected,
+                boolean hasFocus, int row, int column) {
+
+            super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+
+            String status = (String) value;
+            if (!isSelected) {
+                if ("Ativo".equalsIgnoreCase(status)) {
+                    setBackground(new Color(198, 239, 206)); // Verde claro
+                    setForeground(new Color(0, 97, 0));
+                } else if ("Inativo".equalsIgnoreCase(status)) {
+                    setBackground(new Color(255, 199, 206)); // Vermelho claro
+                    setForeground(new Color(156, 0, 6));
+                } else {
+                    setBackground(Color.WHITE);
+                    setForeground(Color.BLACK);
+                }
+            }
+            setHorizontalAlignment(CENTER);
+            return this;
+        }
     }
 }

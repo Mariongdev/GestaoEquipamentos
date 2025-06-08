@@ -2,15 +2,20 @@ package view;
 
 import dao.BloqueioAcessoDAO;
 import model.BloqueioAcesso;
+
 import javax.swing.*;
-import javax.swing.table.DefaultTableModel;
+import javax.swing.border.EmptyBorder;
+import javax.swing.border.TitledBorder;
+import javax.swing.table.*;
 import java.awt.*;
-import java.awt.event.ActionEvent;
+import java.awt.event.*;
 import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class BloqueioAcessoPanel extends JPanel {
     private JTable table;
@@ -18,29 +23,44 @@ public class BloqueioAcessoPanel extends JPanel {
     private JTextField txtCliente, txtContexto, txtNomeAcesso, txtData, txtFiltro;
     private JButton btnAdicionar, btnEditar, btnExcluir, btnLimpar, btnFiltrar;
     private JLabel lblTotalBloqueios;
+
     private int bloqueioSelecionadoId = -1;
     private final DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     public BloqueioAcessoPanel() {
         initComponents();
+
+        // Fonte base SansSerif 14 para todo painel
+        Font fonteBase = new Font("SansSerif", Font.PLAIN, 14);
+        setFonte(this, fonteBase);
+
+        // Fonte negrito para título da tabela
+        Font fonteNegrito = fonteBase.deriveFont(Font.BOLD);
+        table.getTableHeader().setFont(fonteNegrito);
+
+        // Fonte negrito e tamanho 14 para botões
+        Font fonteBotoes = fonteBase.deriveFont(Font.BOLD, 14f);
+        setFonteBotoes(fonteBotoes);
+
+        ajustarAlturaLinhasTabela();
+        aplicarEstiloZebradoTabela();
+
         try {
             carregarDados();
         } catch (ClassNotFoundException ex) {
-            JOptionPane.showMessageDialog(this,
-                "Erro ao carregar driver do banco de dados: " + ex.getMessage(),
-                "Erro", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Erro ao carregar driver do banco: " + ex.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
         }
     }
 
     private void initComponents() {
         setLayout(new BorderLayout(5, 5));
+        setBorder(new EmptyBorder(15, 15, 15, 15));
 
-        // Inicializar componentes
-        btnAdicionar = new JButton("Adicionar");
-        btnEditar = new JButton("Editar");
-        btnExcluir = new JButton("Excluir");
-        btnLimpar = new JButton("Limpar");
-        btnFiltrar = new JButton("Filtrar");
+        btnAdicionar = criarBotao("Adicionar");
+        btnEditar = criarBotao("Editar");
+        btnExcluir = criarBotao("Excluir");
+        btnLimpar = criarBotao("Limpar");
+        btnFiltrar = criarBotao("Filtrar");
 
         txtCliente = new JTextField(20);
         txtContexto = new JTextField(20);
@@ -50,69 +70,198 @@ public class BloqueioAcessoPanel extends JPanel {
 
         lblTotalBloqueios = new JLabel("Total de bloqueios: 0");
 
-        // Modelo da tabela e tabela
         tableModel = new DefaultTableModel(new String[]{"ID", "Cliente", "Contexto", "Nome Acesso", "Data"}, 0) {
-            @Override
             public boolean isCellEditable(int row, int column) {
-                return false; // Não permite edição direta
+                return false;
             }
         };
         table = new JTable(tableModel);
         table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        ajustarAlturaLinhasTabela();
 
-        // Listener para seleção na tabela
         table.getSelectionModel().addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) {
                 selecionarBloqueio();
             }
         });
 
-        // Ações dos botões
         btnAdicionar.addActionListener(this::adicionarBloqueio);
         btnEditar.addActionListener(this::editarBloqueio);
         btnExcluir.addActionListener(this::excluirBloqueio);
         btnLimpar.addActionListener(e -> limparFormulario());
         btnFiltrar.addActionListener(this::filtrarBloqueios);
 
-        // Painel do formulário (dados do bloqueio)
+        // Fonte base para o painel, será usada no título da borda também
+        Font fonteBase = getFont();
+
+        // Cria o painel formulário
         JPanel painelFormulario = new JPanel(new GridLayout(2, 4, 10, 5));
-        painelFormulario.setBorder(BorderFactory.createTitledBorder("Dados do Bloqueio"));
-        painelFormulario.add(new JLabel("Cliente:"));
+
+        // Cria o título da borda em negrito com tamanho da fonte do painel
+        Font fonteTituloBorda = fonteBase.deriveFont(Font.BOLD);
+        TitledBorder border = BorderFactory.createTitledBorder("Dados do Bloqueio");
+        border.setTitleFont(fonteTituloBorda);
+        painelFormulario.setBorder(border);
+
+        // Labels alinhados à esquerda, fonte negrito e tamanho da fonte base
+        Font fonteLabel = fonteBase.deriveFont(Font.BOLD);
+
+        JLabel lblCliente = new JLabel("Cliente:");
+        lblCliente.setHorizontalAlignment(SwingConstants.LEFT);
+        lblCliente.setFont(fonteLabel);
+
+        JLabel lblContexto = new JLabel("Contexto:");
+        lblContexto.setHorizontalAlignment(SwingConstants.LEFT);
+        lblContexto.setFont(fonteLabel);
+
+        JLabel lblNomeAcesso = new JLabel("Nome Acesso:");
+        lblNomeAcesso.setHorizontalAlignment(SwingConstants.LEFT);
+        lblNomeAcesso.setFont(fonteLabel);
+
+        JLabel lblData = new JLabel("Data (dd/MM/yyyy):");
+        lblData.setHorizontalAlignment(SwingConstants.LEFT);
+        lblData.setFont(fonteLabel);
+
+        painelFormulario.add(lblCliente);
         painelFormulario.add(txtCliente);
-        painelFormulario.add(new JLabel("Contexto:"));
+        painelFormulario.add(lblContexto);
         painelFormulario.add(txtContexto);
-        painelFormulario.add(new JLabel("Nome Acesso:"));
+        painelFormulario.add(lblNomeAcesso);
         painelFormulario.add(txtNomeAcesso);
-        painelFormulario.add(new JLabel("Data (dd/MM/yyyy):"));
+        painelFormulario.add(lblData);
         painelFormulario.add(txtData);
 
-        // Painel dos botões CRUD + limpar
-        JPanel painelBotoes = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0));
+        JPanel painelBotoes = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
         painelBotoes.add(btnAdicionar);
         painelBotoes.add(btnEditar);
         painelBotoes.add(btnExcluir);
         painelBotoes.add(btnLimpar);
 
-        // Painel do filtro
-        JPanel painelFiltro = new JPanel(new FlowLayout(FlowLayout.RIGHT, 5, 0));
+        JPanel painelFiltro = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
         painelFiltro.add(new JLabel("Filtro:"));
         painelFiltro.add(txtFiltro);
         painelFiltro.add(btnFiltrar);
 
-        // Painel superior que junta botões + filtro + total de bloqueios
         JPanel painelSuperior = new JPanel(new BorderLayout(10, 5));
         painelSuperior.add(painelBotoes, BorderLayout.WEST);
         painelSuperior.add(painelFiltro, BorderLayout.EAST);
         painelSuperior.add(lblTotalBloqueios, BorderLayout.SOUTH);
 
-        // Painel topo geral com formulário e painelSuperior (botoes + filtro)
-        JPanel topoGeral = new JPanel(new BorderLayout(5,5));
+        JPanel topoGeral = new JPanel(new BorderLayout(5, 5));
         topoGeral.add(painelFormulario, BorderLayout.CENTER);
         topoGeral.add(painelSuperior, BorderLayout.SOUTH);
 
-        // Adicionar componentes no painel principal
         add(topoGeral, BorderLayout.NORTH);
         add(new JScrollPane(table), BorderLayout.CENTER);
+
+        // Depois de criar a tabela, aplicamos o alinhamento desejado:
+        aplicarEstiloZebradoTabela();
+    }
+
+    private JButton criarBotao(String texto) {
+        JButton botao = new JButton(texto);
+        botao.setHorizontalAlignment(SwingConstants.CENTER);
+        botao.setVerticalAlignment(SwingConstants.CENTER);
+        botao.setFont(new Font("SansSerif", Font.BOLD, 16)); // negrito e tamanho 16
+        botao.setBorder(new EmptyBorder(6, 14, 6, 14));
+
+        estiloBotaoSuave(botao);
+        return botao;
+    }
+
+    private void setFonte(Component component, Font fonte) {
+        component.setFont(fonte);
+        if (component instanceof Container container) {
+            for (Component child : container.getComponents()) {
+                setFonte(child, fonte);
+            }
+        }
+    }
+
+    private void setFonteBotoes(Font fonte) {
+        btnAdicionar.setFont(fonte);
+        btnEditar.setFont(fonte);
+        btnExcluir.setFont(fonte);
+        btnLimpar.setFont(fonte);
+        btnFiltrar.setFont(fonte);
+    }
+
+    private void estiloBotaoSuave(JButton botao) {
+        Color corNormal = new Color(176, 224, 230); // azul suave
+        Color corHover = new Color(135, 206, 250);  // azul claro hover
+        Color corPressionado = new Color(70, 130, 180); // azul steel pressionado
+
+        botao.setBackground(corNormal);
+        botao.setForeground(Color.BLACK);
+        botao.setFocusPainted(false);
+        botao.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(new Color(100, 149, 237)),
+            botao.getBorder()
+        ));
+        botao.setOpaque(true);
+
+        botao.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                botao.setBackground(corHover);
+            }
+
+            @Override
+            public void mouseExited(MouseEvent e) {
+                botao.setBackground(corNormal);
+            }
+
+            @Override
+            public void mousePressed(MouseEvent e) {
+                botao.setBackground(corPressionado);
+            }
+
+            @Override
+            public void mouseReleased(MouseEvent e) {
+                if (botao.getBounds().contains(e.getPoint())) {
+                    botao.setBackground(corHover);
+                } else {
+                    botao.setBackground(corNormal);
+                }
+            }
+        });
+    }
+
+    private void ajustarAlturaLinhasTabela() {
+        Font font = table.getFont();
+        FontMetrics fm = table.getFontMetrics(font);
+        int alturaLinha = fm.getHeight() + 16;  // linha mais alta para conforto visual
+        table.setRowHeight(alturaLinha);
+    }
+
+    private void aplicarEstiloZebradoTabela() {
+        table.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
+            private final Color corClaro = new Color(245, 245, 245);
+            private final Color corEscura = Color.WHITE;
+
+            @Override
+            public Component getTableCellRendererComponent(JTable table, Object value,
+                                                           boolean isSelected, boolean hasFocus,
+                                                           int row, int column) {
+                super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+
+                if (isSelected) {
+                    setBackground(table.getSelectionBackground());
+                    setForeground(table.getSelectionForeground());
+                } else {
+                    setBackground(row % 2 == 0 ? corClaro : corEscura);
+                    setForeground(Color.BLACK);
+                }
+
+                setHorizontalAlignment(SwingConstants.LEFT);
+
+                return this;
+            }
+        });
+
+        // Centralizar títulos do header também
+        DefaultTableCellRenderer headerRenderer = (DefaultTableCellRenderer) table.getTableHeader().getDefaultRenderer();
+        headerRenderer.setHorizontalAlignment(SwingConstants.CENTER);
     }
 
     private void carregarDados() throws ClassNotFoundException {
@@ -121,14 +270,12 @@ public class BloqueioAcessoPanel extends JPanel {
             atualizarTabela(bloqueios);
             atualizarTotalBloqueios(bloqueios.size());
         } catch (SQLException ex) {
-            JOptionPane.showMessageDialog(this,
-                "Erro ao carregar bloqueios: " + ex.getMessage(),
-                "Erro", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Erro ao carregar bloqueios: " + ex.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
         }
     }
 
     private void atualizarTabela(List<BloqueioAcesso> bloqueios) {
-        tableModel.setRowCount(0); // limpa linhas antigas
+        tableModel.setRowCount(0);
         for (BloqueioAcesso b : bloqueios) {
             tableModel.addRow(new Object[]{
                 b.getId(),
@@ -157,145 +304,102 @@ public class BloqueioAcessoPanel extends JPanel {
                     txtData.setText(bloqueio.getData().format(dateFormatter));
                 }
             } catch (ClassNotFoundException | SQLException ex) {
-                JOptionPane.showMessageDialog(this,
-                    "Erro ao carregar bloqueio: " + ex.getMessage(),
-                    "Erro", JOptionPane.ERROR_MESSAGE);
+                JOptionPane.showMessageDialog(this, "Erro ao buscar bloqueio: " + ex.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
             }
         }
     }
 
     private void adicionarBloqueio(ActionEvent e) {
         try {
-            if (txtCliente.getText().trim().isEmpty() || txtNomeAcesso.getText().trim().isEmpty()) {
-                JOptionPane.showMessageDialog(this,
-                    "Cliente e Nome do Acesso são obrigatórios!",
-                    "Aviso", JOptionPane.WARNING_MESSAGE);
-                return;
-            }
-            LocalDate data;
-            try {
-                data = LocalDate.parse(txtData.getText(), dateFormatter);
-            } catch (DateTimeParseException ex) {
-                JOptionPane.showMessageDialog(this,
-                    "Data inválida. Use o formato dd/mm/aaaa",
-                    "Aviso", JOptionPane.WARNING_MESSAGE);
-                return;
-            }
+            BloqueioAcesso novoBloqueio = lerDadosFormulario();
+            if (novoBloqueio == null) return;
 
-            BloqueioAcesso bloqueio = new BloqueioAcesso(
-                txtCliente.getText(),
-                txtContexto.getText(),
-                txtNomeAcesso.getText(),
-                data
-            );
-
-            new BloqueioAcessoDAO().inserir(bloqueio);
+            BloqueioAcessoDAO dao = new BloqueioAcessoDAO();
+            dao.inserir(novoBloqueio);
             carregarDados();
             limparFormulario();
-
-            JOptionPane.showMessageDialog(this,
-                "Bloqueio adicionado com sucesso!",
-                "Sucesso", JOptionPane.INFORMATION_MESSAGE);
-
+            JOptionPane.showMessageDialog(this, "Bloqueio adicionado com sucesso!");
         } catch (ClassNotFoundException | SQLException ex) {
-            JOptionPane.showMessageDialog(this,
-                "Erro ao adicionar bloqueio: " + ex.getMessage(),
-                "Erro", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Erro ao adicionar bloqueio: " + ex.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
         }
     }
 
     private void editarBloqueio(ActionEvent e) {
         if (bloqueioSelecionadoId == -1) {
-            JOptionPane.showMessageDialog(this,
-                "Selecione um bloqueio para editar",
-                "Aviso", JOptionPane.WARNING_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Selecione um bloqueio para editar.");
             return;
         }
-
         try {
-            if (txtCliente.getText().trim().isEmpty() || txtNomeAcesso.getText().trim().isEmpty()) {
-                JOptionPane.showMessageDialog(this,
-                    "Cliente e Nome do Acesso são obrigatórios!",
-                    "Aviso", JOptionPane.WARNING_MESSAGE);
-                return;
-            }
-            LocalDate data = LocalDate.parse(txtData.getText(), dateFormatter);
+            BloqueioAcesso bloqueioEditado = lerDadosFormulario();
+            if (bloqueioEditado == null) return;
 
-            BloqueioAcesso bloqueio = new BloqueioAcesso(
-                txtCliente.getText(),
-                txtContexto.getText(),
-                txtNomeAcesso.getText(),
-                data
-            );
-            bloqueio.setId(bloqueioSelecionadoId);
-
-            new BloqueioAcessoDAO().atualizar(bloqueio);
+            bloqueioEditado.setId(bloqueioSelecionadoId);
+            BloqueioAcessoDAO dao = new BloqueioAcessoDAO();
+            dao.atualizar(bloqueioEditado);
             carregarDados();
             limparFormulario();
-
-            JOptionPane.showMessageDialog(this,
-                "Bloqueio atualizado com sucesso!",
-                "Sucesso", JOptionPane.INFORMATION_MESSAGE);
-
-        } catch (DateTimeParseException ex) {
-            JOptionPane.showMessageDialog(this,
-                "Data inválida. Use o formato dd/mm/aaaa",
-                "Aviso", JOptionPane.WARNING_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Bloqueio editado com sucesso!");
         } catch (ClassNotFoundException | SQLException ex) {
-            JOptionPane.showMessageDialog(this,
-                "Erro ao atualizar bloqueio: " + ex.getMessage(),
-                "Erro", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Erro ao editar bloqueio: " + ex.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
         }
     }
 
     private void excluirBloqueio(ActionEvent e) {
         if (bloqueioSelecionadoId == -1) {
-            JOptionPane.showMessageDialog(this,
-                "Selecione um bloqueio para excluir",
-                "Aviso", JOptionPane.WARNING_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Selecione um bloqueio para excluir.");
             return;
         }
-
-        int confirm = JOptionPane.showConfirmDialog(this,
-            "Tem certeza que deseja excluir este bloqueio?",
-            "Confirmação", JOptionPane.YES_NO_OPTION);
-
-        if (confirm == JOptionPane.YES_OPTION) {
+        int confirmar = JOptionPane.showConfirmDialog(this, "Confirma a exclusão do bloqueio selecionado?", "Confirmar Exclusão", JOptionPane.YES_NO_OPTION);
+        if (confirmar == JOptionPane.YES_OPTION) {
             try {
-                new BloqueioAcessoDAO().excluir(bloqueioSelecionadoId);
+                BloqueioAcessoDAO dao = new BloqueioAcessoDAO();
+                dao.excluir(bloqueioSelecionadoId);
                 carregarDados();
                 limparFormulario();
-
-                JOptionPane.showMessageDialog(this,
-                    "Bloqueio excluído com sucesso!",
-                    "Sucesso", JOptionPane.INFORMATION_MESSAGE);
-
+                JOptionPane.showMessageDialog(this, "Bloqueio excluído com sucesso!");
             } catch (ClassNotFoundException | SQLException ex) {
-                JOptionPane.showMessageDialog(this,
-                    "Erro ao excluir bloqueio: " + ex.getMessage(),
-                    "Erro", JOptionPane.ERROR_MESSAGE);
+                JOptionPane.showMessageDialog(this, "Erro ao excluir bloqueio: " + ex.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
             }
         }
     }
 
     private void filtrarBloqueios(ActionEvent e) {
+        String filtro = txtFiltro.getText().trim();
+        BloqueioAcessoDAO dao = new BloqueioAcessoDAO();
+        List<BloqueioAcesso> filtrados = null;
         try {
-            String filtro = txtFiltro.getText().trim();
+            filtrados = dao.filtrarPorClienteContextoNome(filtro);
+        } catch (SQLException ex) {
+            Logger.getLogger(BloqueioAcessoPanel.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (ClassNotFoundException ex) {
+            Logger.getLogger(BloqueioAcessoPanel.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        atualizarTabela(filtrados);
+        atualizarTotalBloqueios(filtrados.size());
+    }
 
-            List<BloqueioAcesso> bloqueios;
-            if (filtro.isEmpty()) {
-                bloqueios = new BloqueioAcessoDAO().listarTodos();
-            } else {
-                bloqueios = new BloqueioAcessoDAO().filtrar(filtro);
-            }
+    private BloqueioAcesso lerDadosFormulario() {
+        String cliente = txtCliente.getText().trim();
+        String contexto = txtContexto.getText().trim();
+        String nomeAcesso = txtNomeAcesso.getText().trim();
+        String dataStr = txtData.getText().trim();
 
-            atualizarTabela(bloqueios);
-            atualizarTotalBloqueios(bloqueios.size());
+        if (cliente.isEmpty() || contexto.isEmpty() || nomeAcesso.isEmpty() || dataStr.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Preencha todos os campos.", "Aviso", JOptionPane.WARNING_MESSAGE);
+            return null;
+        }
 
-        } catch (ClassNotFoundException | SQLException ex) {
-            JOptionPane.showMessageDialog(this,
-                "Erro ao filtrar bloqueios: " + ex.getMessage(),
-                "Erro", JOptionPane.ERROR_MESSAGE);
+        try {
+            LocalDate data = LocalDate.parse(dataStr, dateFormatter);
+            BloqueioAcesso bloqueio = new BloqueioAcesso();
+            bloqueio.setCliente(cliente);
+            bloqueio.setContexto(contexto);
+            bloqueio.setNomeAcesso(nomeAcesso);
+            bloqueio.setData(data);
+            return bloqueio;
+        } catch (DateTimeParseException ex) {
+            JOptionPane.showMessageDialog(this, "Data inválida. Use o formato dd/MM/yyyy.", "Erro", JOptionPane.ERROR_MESSAGE);
+            return null;
         }
     }
 

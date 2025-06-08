@@ -4,7 +4,7 @@ import dao.EquipamentoAlugadoDAO;
 import model.EquipamentoAlugado;
 
 import javax.swing.*;
-import javax.swing.table.DefaultTableModel;
+import javax.swing.table.*;
 import java.awt.*;
 import java.awt.event.*;
 import java.sql.SQLException;
@@ -12,6 +12,8 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class EquipamentoAlugadoPanel extends JPanel {
     private JTable table;
@@ -22,9 +24,19 @@ public class EquipamentoAlugadoPanel extends JPanel {
     private JLabel lblTotalEquipamentos;
     private int equipamentoSelecionadoId = -1;
     private final DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-    private int totalEquipamentos = 0; // total geral sem filtro
+    private int totalEquipamentos = 0;
 
     public EquipamentoAlugadoPanel() {
+        setLayout(new BorderLayout());
+        setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
+        Font fontePadrao = new Font("SansSerif", Font.PLAIN, 14);
+        UIManager.put("Label.font", fontePadrao);
+        UIManager.put("Button.font", fontePadrao);
+        UIManager.put("ComboBox.font", fontePadrao);
+        UIManager.put("TextField.font", fontePadrao);
+        UIManager.put("Table.font", fontePadrao);
+        UIManager.put("TableHeader.font", new Font("SansSerif", Font.BOLD, 14)); // Cabeçalho em negrito
+
         initComponents();
         try {
             carregarDados();
@@ -36,13 +48,9 @@ public class EquipamentoAlugadoPanel extends JPanel {
     }
 
     private void initComponents() {
-        setLayout(new BorderLayout());
-
-        // Painel superior principal com layout vertical
         JPanel topPanel = new JPanel();
         topPanel.setLayout(new BoxLayout(topPanel, BoxLayout.Y_AXIS));
 
-        // Painel do formulário (labels e campos)
         JPanel formPanel = new JPanel(new GridBagLayout());
         GridBagConstraints gbc = new GridBagConstraints();
 
@@ -58,30 +66,24 @@ public class EquipamentoAlugadoPanel extends JPanel {
         txtData = new JTextField(10);
         cmbStatus = new JComboBox<>(new String[]{"Ativo", "Inativo"});
 
-        gbc.insets = new Insets(5,5,5,5);
+        gbc.insets = new Insets(5, 5, 5, 5);
         gbc.anchor = GridBagConstraints.WEST;
 
-        // Linha 0
         gbc.gridx = 0; gbc.gridy = 0; formPanel.add(lblNome, gbc);
-        gbc.gridx = 1; gbc.gridy = 0; formPanel.add(txtNome, gbc);
+        gbc.gridx = 1; formPanel.add(txtNome, gbc);
+        gbc.gridx = 2; formPanel.add(lblEquipModelo, gbc);
+        gbc.gridx = 3; formPanel.add(txtEquipModelo, gbc);
 
-        gbc.gridx = 2; gbc.gridy = 0; formPanel.add(lblEquipModelo, gbc);
-        gbc.gridx = 3; gbc.gridy = 0; formPanel.add(txtEquipModelo, gbc);
-
-        // Linha 1
         gbc.gridx = 0; gbc.gridy = 1; formPanel.add(lblEquipQuantidade, gbc);
-        gbc.gridx = 1; gbc.gridy = 1; formPanel.add(txtEquipQuantidade, gbc);
+        gbc.gridx = 1; formPanel.add(txtEquipQuantidade, gbc);
+        gbc.gridx = 2; formPanel.add(lblData, gbc);
+        gbc.gridx = 3; formPanel.add(txtData, gbc);
 
-        gbc.gridx = 2; gbc.gridy = 1; formPanel.add(lblData, gbc);
-        gbc.gridx = 3; gbc.gridy = 1; formPanel.add(txtData, gbc);
-
-        // Linha 2
         gbc.gridx = 0; gbc.gridy = 2; formPanel.add(lblStatus, gbc);
-        gbc.gridx = 1; gbc.gridy = 2; formPanel.add(cmbStatus, gbc);
+        gbc.gridx = 1; formPanel.add(cmbStatus, gbc);
 
         topPanel.add(formPanel);
 
-        // Painel dos botões CRUD
         JPanel buttonsPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 5));
         btnAdicionar = new JButton("Adicionar");
         btnEditar = new JButton("Editar");
@@ -95,7 +97,6 @@ public class EquipamentoAlugadoPanel extends JPanel {
 
         topPanel.add(buttonsPanel);
 
-        // Painel de filtro + botão filtrar + total equipamentos
         JPanel filtroPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 5));
         filtroPanel.add(new JLabel("Filtro:"));
         txtFiltro = new JTextField(15);
@@ -109,14 +110,12 @@ public class EquipamentoAlugadoPanel extends JPanel {
         filtroPanel.add(btnFiltrar);
 
         lblTotalEquipamentos = new JLabel("Mostrando 0 de 0 equipamentos");
-        filtroPanel.add(Box.createHorizontalStrut(20)); // espaçamento
+        filtroPanel.add(Box.createHorizontalStrut(20));
         filtroPanel.add(lblTotalEquipamentos);
 
         topPanel.add(filtroPanel);
-
         add(topPanel, BorderLayout.NORTH);
 
-        // Tabela
         tableModel = new DefaultTableModel(
                 new Object[]{"ID", "Nome", "Modelo", "Quantidade", "Data", "Status"}, 0
         ) {
@@ -125,11 +124,47 @@ public class EquipamentoAlugadoPanel extends JPanel {
                 return false;
             }
         };
-        table = new JTable(tableModel);
+        table = new JTable(tableModel) {
+            @Override
+            public Component prepareRenderer(TableCellRenderer renderer, int row, int column) {
+                Component comp = super.prepareRenderer(renderer, row, column);
+
+                if (!isRowSelected(row)) {
+                    comp.setBackground(row % 2 == 0 ? new Color(245, 245, 245) : Color.WHITE);
+                } else {
+                    comp.setBackground(getSelectionBackground());
+                }
+
+                if (column == 5) { // coluna status
+                    String status = (String) getValueAt(row, column);
+                    if ("Ativo".equalsIgnoreCase(status)) {
+                        comp.setBackground(new Color(200, 255, 200)); // verde claro
+                        comp.setForeground(new Color(0, 100, 0)); // verde escuro no texto
+                    } else if ("Inativo".equalsIgnoreCase(status)) {
+                        comp.setBackground(new Color(255, 200, 200)); // vermelho claro
+                        comp.setForeground(new Color(139, 0, 0)); // vermelho escuro no texto
+                    } else {
+                        comp.setForeground(Color.BLACK);
+                    }
+                } else {
+                    comp.setForeground(Color.BLACK);
+                }
+
+                return comp;
+            }
+        };
+
+        // Centraliza texto da coluna "Status"
+        DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
+        centerRenderer.setHorizontalAlignment(SwingConstants.CENTER);
+        table.getColumnModel().getColumn(5).setCellRenderer(centerRenderer);
+
+        table.setRowHeight(28);
+        table.getTableHeader().setReorderingAllowed(false);
+
         JScrollPane scrollPane = new JScrollPane(table);
         add(scrollPane, BorderLayout.CENTER);
 
-        // Listeners
         btnAdicionar.addActionListener(this::adicionarEquipamento);
         btnEditar.addActionListener(this::editarEquipamento);
         btnExcluir.addActionListener(this::excluirEquipamento);
@@ -162,7 +197,6 @@ public class EquipamentoAlugadoPanel extends JPanel {
 
     private void atualizarTabela(List<EquipamentoAlugado> equipamentos) {
         tableModel.setRowCount(0);
-
         for (EquipamentoAlugado equipamento : equipamentos) {
             tableModel.addRow(new Object[]{
                     equipamento.getId(),
@@ -179,7 +213,6 @@ public class EquipamentoAlugadoPanel extends JPanel {
         int selectedRow = table.getSelectedRow();
         if (selectedRow >= 0) {
             equipamentoSelecionadoId = (int) tableModel.getValueAt(selectedRow, 0);
-
             try {
                 EquipamentoAlugado equipamento = new EquipamentoAlugadoDAO().buscarPorId(equipamentoSelecionadoId);
                 if (equipamento != null) {
@@ -200,111 +233,83 @@ public class EquipamentoAlugadoPanel extends JPanel {
     private void adicionarEquipamento(ActionEvent e) {
         try {
             if (txtNome.getText().trim().isEmpty()) {
-                JOptionPane.showMessageDialog(this,
-                        "Nome é obrigatório", "Aviso", JOptionPane.WARNING_MESSAGE);
+                JOptionPane.showMessageDialog(this, "Nome é obrigatório", "Aviso", JOptionPane.WARNING_MESSAGE);
                 return;
             }
 
-            if (txtEquipQuantidade.getText().trim().isEmpty() ||
-                    !txtEquipQuantidade.getText().matches("\\d+")) {
-                JOptionPane.showMessageDialog(this,
-                        "Quantidade de equipamentos inválida", "Aviso", JOptionPane.WARNING_MESSAGE);
-                return;
-            }
+            int quantidade = Integer.parseInt(txtEquipQuantidade.getText().trim());
+            LocalDate data = LocalDate.parse(txtData.getText().trim(), dateFormatter);
 
-            LocalDate data;
-            try {
-                data = LocalDate.parse(txtData.getText(), dateFormatter);
-            } catch (DateTimeParseException ex) {
-                JOptionPane.showMessageDialog(this,
-                        "Data inválida. Use o formato dd/MM/yyyy", "Aviso", JOptionPane.WARNING_MESSAGE);
-                return;
-            }
+            EquipamentoAlugado equipamento = new EquipamentoAlugado();
+            equipamento.setNome(txtNome.getText().trim());
+            equipamento.setEquipamentoModelo(txtEquipModelo.getText().trim());
+            equipamento.setEquipamentoQuantidade(quantidade);
+            equipamento.setData(data);
+            equipamento.setStatus((String) cmbStatus.getSelectedItem());
 
-            EquipamentoAlugado equipamento = new EquipamentoAlugado(
-                    txtNome.getText(),
-                    txtEquipModelo.getText(),
-                    Integer.parseInt(txtEquipQuantidade.getText()),
-                    data,
-                    cmbStatus.getSelectedItem().toString()
-            );
+            new EquipamentoAlugadoDAO().adicionar(equipamento);
 
-            new EquipamentoAlugadoDAO().inserir(equipamento);
             carregarDados();
             limparFormulario();
+            
+            // Mensagem de sucesso ao adicionar
+            JOptionPane.showMessageDialog(this, "Equipamento cadastrado com sucesso!", "Sucesso", JOptionPane.INFORMATION_MESSAGE);
 
-            JOptionPane.showMessageDialog(this,
-                    "Equipamento adicionado com sucesso!", "Sucesso", JOptionPane.INFORMATION_MESSAGE);
-
-        } catch (ClassNotFoundException | SQLException ex) {
-            JOptionPane.showMessageDialog(this,
-                    "Erro ao adicionar equipamento: " + ex.getMessage(),
-                    "Erro", JOptionPane.ERROR_MESSAGE);
         } catch (NumberFormatException ex) {
-            JOptionPane.showMessageDialog(this,
-                    "Quantidade deve ser um número válido", "Erro", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Quantidade deve ser um número inteiro", "Erro", JOptionPane.ERROR_MESSAGE);
+        } catch (DateTimeParseException ex) {
+            JOptionPane.showMessageDialog(this, "Data inválida. Use o formato dd/MM/yyyy", "Erro", JOptionPane.ERROR_MESSAGE);
+        } catch (ClassNotFoundException ex) {
+            JOptionPane.showMessageDialog(this, "Erro ao adicionar equipamento: " + ex.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
+        } catch (SQLException ex) {
+            Logger.getLogger(EquipamentoAlugadoPanel.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
 
     private void editarEquipamento(ActionEvent e) {
-        if (equipamentoSelecionadoId == -1) {
-            JOptionPane.showMessageDialog(this,
-                    "Selecione um equipamento para editar", "Aviso", JOptionPane.WARNING_MESSAGE);
+        if (equipamentoSelecionadoId < 0) {
+            JOptionPane.showMessageDialog(this, "Selecione um equipamento para editar", "Aviso", JOptionPane.WARNING_MESSAGE);
             return;
         }
 
         try {
-            if (txtNome.getText().trim().isEmpty()) {
-                JOptionPane.showMessageDialog(this,
-                        "Nome é obrigatório", "Aviso", JOptionPane.WARNING_MESSAGE);
-                return;
-            }
+            int quantidade = Integer.parseInt(txtEquipQuantidade.getText().trim());
+            LocalDate data = LocalDate.parse(txtData.getText().trim(), dateFormatter);
 
-            LocalDate data;
-            try {
-                data = LocalDate.parse(txtData.getText(), dateFormatter);
-            } catch (DateTimeParseException ex) {
-                JOptionPane.showMessageDialog(this,
-                        "Data inválida. Use o formato dd/MM/yyyy", "Aviso", JOptionPane.WARNING_MESSAGE);
-                return;
-            }
-
-            EquipamentoAlugado equipamento = new EquipamentoAlugado(
-                    txtNome.getText(),
-                    txtEquipModelo.getText(),
-                    Integer.parseInt(txtEquipQuantidade.getText()),
-                    data,
-                    cmbStatus.getSelectedItem().toString()
-            );
+            EquipamentoAlugado equipamento = new EquipamentoAlugado();
             equipamento.setId(equipamentoSelecionadoId);
+            equipamento.setNome(txtNome.getText().trim());
+            equipamento.setEquipamentoModelo(txtEquipModelo.getText().trim());
+            equipamento.setEquipamentoQuantidade(quantidade);
+            equipamento.setData(data);
+            equipamento.setStatus((String) cmbStatus.getSelectedItem());
 
             new EquipamentoAlugadoDAO().atualizar(equipamento);
+
             carregarDados();
             limparFormulario();
 
-            JOptionPane.showMessageDialog(this,
-                    "Equipamento atualizado com sucesso!", "Sucesso", JOptionPane.INFORMATION_MESSAGE);
+            // Mensagem de sucesso ao editar
+            JOptionPane.showMessageDialog(this, "Equipamento editado com sucesso!", "Sucesso", JOptionPane.INFORMATION_MESSAGE);
 
-        } catch (ClassNotFoundException | SQLException ex) {
-            JOptionPane.showMessageDialog(this,
-                    "Erro ao atualizar equipamento: " + ex.getMessage(),
-                    "Erro", JOptionPane.ERROR_MESSAGE);
         } catch (NumberFormatException ex) {
-            JOptionPane.showMessageDialog(this,
-                    "Quantidade deve ser um número válido", "Erro", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Quantidade deve ser um número inteiro", "Erro", JOptionPane.ERROR_MESSAGE);
+        } catch (DateTimeParseException ex) {
+            JOptionPane.showMessageDialog(this, "Data inválida. Use o formato dd/MM/yyyy", "Erro", JOptionPane.ERROR_MESSAGE);
+        } catch (SQLException | ClassNotFoundException ex) {
+            JOptionPane.showMessageDialog(this, "Erro ao editar equipamento: " + ex.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
         }
     }
 
     private void excluirEquipamento(ActionEvent e) {
-        if (equipamentoSelecionadoId == -1) {
-            JOptionPane.showMessageDialog(this,
-                    "Selecione um equipamento para excluir", "Aviso", JOptionPane.WARNING_MESSAGE);
+        if (equipamentoSelecionadoId < 0) {
+            JOptionPane.showMessageDialog(this, "Selecione um equipamento para excluir", "Aviso", JOptionPane.WARNING_MESSAGE);
             return;
         }
 
         int confirm = JOptionPane.showConfirmDialog(this,
-                "Tem certeza que deseja excluir este equipamento?", "Confirmação",
-                JOptionPane.YES_NO_OPTION);
+                "Tem certeza que deseja excluir o equipamento selecionado?",
+                "Confirmação", JOptionPane.YES_NO_OPTION);
 
         if (confirm == JOptionPane.YES_OPTION) {
             try {
@@ -312,30 +317,14 @@ public class EquipamentoAlugadoPanel extends JPanel {
                 carregarDados();
                 limparFormulario();
 
-                JOptionPane.showMessageDialog(this,
-                        "Equipamento excluído com sucesso!", "Sucesso", JOptionPane.INFORMATION_MESSAGE);
-            } catch (ClassNotFoundException | SQLException ex) {
+                // Mensagem de sucesso ao excluir
+                JOptionPane.showMessageDialog(this, "Equipamento excluído com sucesso!", "Sucesso", JOptionPane.INFORMATION_MESSAGE);
+
+            } catch (SQLException | ClassNotFoundException ex) {
                 JOptionPane.showMessageDialog(this,
                         "Erro ao excluir equipamento: " + ex.getMessage(),
                         "Erro", JOptionPane.ERROR_MESSAGE);
             }
-        }
-    }
-
-    private void filtrarEquipamentos(ActionEvent e) {
-        try {
-            String filtroNome = txtFiltro.getText().trim();
-            String filtroStatus = (String) cmbFiltroStatus.getSelectedItem();
-
-            List<EquipamentoAlugado> equipamentosFiltrados =
-                    new EquipamentoAlugadoDAO().filtrar(filtroNome, filtroStatus);
-            atualizarTabela(equipamentosFiltrados);
-            atualizarTotalEquipamentos(equipamentosFiltrados.size(), totalEquipamentos);
-
-        } catch (ClassNotFoundException | SQLException ex) {
-            JOptionPane.showMessageDialog(this,
-                    "Erro ao filtrar equipamentos: " + ex.getMessage(),
-                    "Erro", JOptionPane.ERROR_MESSAGE);
         }
     }
 
@@ -347,5 +336,33 @@ public class EquipamentoAlugadoPanel extends JPanel {
         cmbStatus.setSelectedIndex(0);
         equipamentoSelecionadoId = -1;
         table.clearSelection();
+    }
+
+    private void filtrarEquipamentos(ActionEvent e) {
+        String filtroTexto = txtFiltro.getText().trim().toLowerCase();
+        String filtroStatus = (String) cmbFiltroStatus.getSelectedItem();
+
+        try {
+            List<EquipamentoAlugado> todosEquipamentos = new EquipamentoAlugadoDAO().listarTodos();
+            List<EquipamentoAlugado> filtrados = todosEquipamentos.stream()
+                    .filter(eq -> {
+                        boolean textoOk = filtroTexto.isEmpty()
+                                || eq.getNome().toLowerCase().contains(filtroTexto)
+                                || eq.getEquipamentoModelo().toLowerCase().contains(filtroTexto)
+                                || String.valueOf(eq.getEquipamentoQuantidade()).contains(filtroTexto)
+                                || eq.getData().format(dateFormatter).contains(filtroTexto);
+                        boolean statusOk = filtroStatus == null || filtroStatus.isEmpty() || eq.getStatus().equalsIgnoreCase(filtroStatus);
+                        return textoOk && statusOk;
+                    })
+                    .toList();
+
+            atualizarTabela(filtrados);
+            atualizarTotalEquipamentos(filtrados.size(), totalEquipamentos);
+
+        } catch (ClassNotFoundException | SQLException ex) {
+            JOptionPane.showMessageDialog(this,
+                    "Erro ao filtrar equipamentos: " + ex.getMessage(),
+                    "Erro", JOptionPane.ERROR_MESSAGE);
+        }
     }
 }

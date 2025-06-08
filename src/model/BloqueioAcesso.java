@@ -17,6 +17,10 @@ public class BloqueioAcesso {
         this.nomeAcesso = nomeAcesso;
         this.data = data;
     }
+
+    public BloqueioAcesso(int bloqueioSelecionadoId, String text, String text0, String text1, LocalDate data) {
+        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+    }
     
     // Getters e Setters
     public int getId() { return id; }
@@ -29,4 +33,20 @@ public class BloqueioAcesso {
     public void setNomeAcesso(String nomeAcesso) { this.nomeAcesso = nomeAcesso; }
     public LocalDate getData() { return data; }
     public void setData(LocalDate data) { this.data = data; }
+
+    public void setUsuario(String usuario) {
+        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+    }
+
+    public void setMotivo(String motivo) {
+        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+    }
+
+    public Object getUsuario() {
+        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+    }
+
+    public Object getMotivo() {
+        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+    }
 }

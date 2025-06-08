@@ -2,24 +2,21 @@ package view;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.KeyEvent;
-import java.awt.event.KeyAdapter;
-import java.awt.event.ItemEvent;
-import java.awt.event.ItemListener;
+import java.awt.event.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class LoginFrame extends JFrame {
+
     private JTextField txtUsuario;
     private JPasswordField txtSenha;
-    private JButton btnLogin;
     private JCheckBox chkMostrarSenha;
+    private JButton btnLogin;
 
     public LoginFrame() {
         super("Login - Sistema de Gestão");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setSize(350, 250); // Aumentei a altura para acomodar a checkbox
+        setSize(450, 320);
         setLocationRelativeTo(null);
         setResizable(false);
 
@@ -29,97 +26,96 @@ public class LoginFrame extends JFrame {
     }
 
     private void initComponents() {
-        JPanel panel = new JPanel(new GridBagLayout());
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(5, 5, 5, 5);
-        gbc.anchor = GridBagConstraints.WEST;
+        JPanel mainPanel = new JPanel(new BorderLayout());
+        mainPanel.setBorder(BorderFactory.createEmptyBorder(30, 40, 30, 40));
+
+        JPanel centerPanel = new JPanel();
+        centerPanel.setLayout(new BoxLayout(centerPanel, BoxLayout.Y_AXIS));
 
         // Título
-        gbc.gridx = 0;
-        gbc.gridy = 0;
-        gbc.gridwidth = 2;
-        JLabel lblTitulo = new JLabel("Acesso ao Sistema");
-        lblTitulo.setFont(new Font("Arial", Font.BOLD, 16));
-        panel.add(lblTitulo, gbc);
+        JLabel lblTitulo = new JLabel("Bem-vindo ao Sistema");
+        lblTitulo.setFont(new Font("Arial", Font.BOLD, 20));
+        lblTitulo.setForeground(new Color(0, 102, 204));
+        lblTitulo.setAlignmentX(Component.CENTER_ALIGNMENT);
+        lblTitulo.setBorder(BorderFactory.createEmptyBorder(0, 0, 20, 0));
+        centerPanel.add(lblTitulo);
 
         // Usuário
-        gbc.gridy++;
-        gbc.gridwidth = 1;
-        panel.add(new JLabel("Usuário:"), gbc);
+        JLabel lblUsuario = new JLabel("Usuário:");
+        lblUsuario.setFont(new Font("Arial", Font.BOLD, 16));
+        lblUsuario.setAlignmentX(Component.CENTER_ALIGNMENT);
+        centerPanel.add(lblUsuario);
 
-        gbc.gridx = 1;
-        txtUsuario = new JTextField(15);
-        panel.add(txtUsuario, gbc);
+        txtUsuario = new JTextField(20);
+        txtUsuario.setMaximumSize(new Dimension(250, 35));
+        txtUsuario.setFont(new Font("Arial", Font.PLAIN, 14));
+        txtUsuario.setAlignmentX(Component.CENTER_ALIGNMENT);
+        centerPanel.add(txtUsuario);
+        centerPanel.add(Box.createRigidArea(new Dimension(0, 10)));
 
         // Senha
-        gbc.gridx = 0;
-        gbc.gridy++;
-        panel.add(new JLabel("Senha:"), gbc);
+        JLabel lblSenha = new JLabel("Senha:");
+        lblSenha.setFont(new Font("Arial", Font.BOLD, 16));
+        lblSenha.setAlignmentX(Component.CENTER_ALIGNMENT);
+        centerPanel.add(lblSenha);
 
-        gbc.gridx = 1;
-        txtSenha = new JPasswordField(15);
-        panel.add(txtSenha, gbc);
+        txtSenha = new JPasswordField(20);
+        txtSenha.setMaximumSize(new Dimension(250, 35));
+        txtSenha.setFont(new Font("Arial", Font.PLAIN, 14));
+        txtSenha.setAlignmentX(Component.CENTER_ALIGNMENT);
+        centerPanel.add(txtSenha);
+        centerPanel.add(Box.createRigidArea(new Dimension(0, 10)));
 
-        // Checkbox Mostrar Senha
-        gbc.gridx = 1;
-        gbc.gridy++;
+        // Mostrar senha
         chkMostrarSenha = new JCheckBox("Mostrar senha");
-        panel.add(chkMostrarSenha, gbc);
+        chkMostrarSenha.setFont(new Font("Arial", Font.PLAIN, 12));
+        chkMostrarSenha.setAlignmentX(Component.CENTER_ALIGNMENT);
+        centerPanel.add(chkMostrarSenha);
+        centerPanel.add(Box.createRigidArea(new Dimension(0, 20)));
 
         // Botões
-        gbc.gridx = 0;
-        gbc.gridy++;
-        gbc.gridwidth = 2;
-        gbc.anchor = GridBagConstraints.CENTER;
-
-        JPanel botoesPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 0));
+        JPanel panelBotoes = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 0));
         btnLogin = new JButton("Login");
+        btnLogin.setFont(new Font("Arial", Font.BOLD, 13));
+        btnLogin.setPreferredSize(new Dimension(100, 35));
         btnLogin.addActionListener(this::realizarLogin);
 
         JButton btnCancelar = new JButton("Cancelar");
+        btnCancelar.setFont(new Font("Arial", Font.BOLD, 13));
+        btnCancelar.setPreferredSize(new Dimension(100, 35));
         btnCancelar.addActionListener(e -> System.exit(0));
 
-        botoesPanel.add(btnLogin);
-        botoesPanel.add(btnCancelar);
-        panel.add(botoesPanel, gbc);
+        panelBotoes.add(btnLogin);
+        panelBotoes.add(btnCancelar);
 
-        add(panel);
+        centerPanel.add(panelBotoes);
+        mainPanel.add(centerPanel, BorderLayout.CENTER);
+
+        add(mainPanel);
     }
 
     private void setupMostrarSenhaListener() {
-        chkMostrarSenha.addItemListener(new ItemListener() {
-            @Override
-            public void itemStateChanged(ItemEvent e) {
-                if (chkMostrarSenha.isSelected()) {
-                    txtSenha.setEchoChar((char) 0); // Mostra a senha
-                } else {
-                    txtSenha.setEchoChar('•'); // Oculta a senha
-                }
-            }
+        chkMostrarSenha.addItemListener(e -> {
+            txtSenha.setEchoChar(chkMostrarSenha.isSelected() ? (char) 0 : '•');
         });
     }
 
     private void setupEnterKeyListener() {
-        txtSenha.addKeyListener(new KeyAdapter() {
-            @Override
+        txtUsuario.addKeyListener(new KeyAdapter() {
             public void keyPressed(KeyEvent e) {
-                if (e.getKeyCode() == KeyEvent.VK_ENTER) {
-                    btnLogin.doClick();
-                }
+                if (e.getKeyCode() == KeyEvent.VK_ENTER)
+                    txtSenha.requestFocus();
             }
         });
 
-        txtUsuario.addKeyListener(new KeyAdapter() {
-            @Override
+        txtSenha.addKeyListener(new KeyAdapter() {
             public void keyPressed(KeyEvent e) {
-                if (e.getKeyCode() == KeyEvent.VK_ENTER) {
-                    txtSenha.requestFocus();
-                }
+                if (e.getKeyCode() == KeyEvent.VK_ENTER)
+                    btnLogin.doClick();
             }
         });
     }
 
-    // ✅ Removido "throws ClassNotFoundException"
     private void realizarLogin(ActionEvent e) {
         String usuario = txtUsuario.getText().trim();
         String senha = new String(txtSenha.getPassword());
@@ -143,9 +139,7 @@ public class LoginFrame extends JFrame {
     public static void main(String[] args) {
         try {
             UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        } catch (Exception ignored) {}
 
         try {
             model.Database.initialize();
@@ -156,11 +150,9 @@ public class LoginFrame extends JFrame {
             return;
         }
 
-        // ✅ Lambda com tratamento de exceção
         SwingUtilities.invokeLater(() -> {
             try {
-                LoginFrame login = new LoginFrame();
-                login.setVisible(true);
+                new LoginFrame().setVisible(true);
             } catch (Exception ex) {
                 ex.printStackTrace();
                 JOptionPane.showMessageDialog(null,
