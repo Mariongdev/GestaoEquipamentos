@@ -103,15 +103,17 @@ public class LoginFrame extends JFrame {
     private void setupEnterKeyListener() {
         txtUsuario.addKeyListener(new KeyAdapter() {
             public void keyPressed(KeyEvent e) {
-                if (e.getKeyCode() == KeyEvent.VK_ENTER)
+                if (e.getKeyCode() == KeyEvent.VK_ENTER) {
                     txtSenha.requestFocus();
+                }
             }
         });
 
         txtSenha.addKeyListener(new KeyAdapter() {
             public void keyPressed(KeyEvent e) {
-                if (e.getKeyCode() == KeyEvent.VK_ENTER)
+                if (e.getKeyCode() == KeyEvent.VK_ENTER) {
                     btnLogin.doClick();
+                }
             }
         });
     }
@@ -120,7 +122,9 @@ public class LoginFrame extends JFrame {
         String usuario = txtUsuario.getText().trim();
         String senha = new String(txtSenha.getPassword());
 
-        if (usuario.equals("admin") && senha.equals("963741")) {
+        if ((usuario.equals("admin") && senha.equals("963741")) || 
+            (usuario.equals("usuario1") && senha.equals("123456")) ||
+            (usuario.equals("usuario2") && senha.equals("123456"))) {
             this.dispose();
             try {
                 new MainFrame().setVisible(true);
@@ -139,7 +143,8 @@ public class LoginFrame extends JFrame {
     public static void main(String[] args) {
         try {
             UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
 
         try {
             model.Database.initialize();
